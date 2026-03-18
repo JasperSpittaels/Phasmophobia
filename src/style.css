@@ -1,22 +1,24 @@
-body {
+body, html {
 	margin: 0;
-	font-family: Arial, sans-serif;
-	background: black;
-	color: lime;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	height: 100vh;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
 }
 
-#game {
-	text-align: center;
+canvas {
+	width: 100%;
+	height: 100%;
+	display: block;
 }
 
-button {
-	padding: 15px 30px;
-	font-size: 18px;
-	background: lime;
-	border: none;
-	border-radius: 10px;
+.crosshair {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 5px;
+	height: 5px;
+	background: white;
+	border-radius: 50%;
+	transform: translate(-50%, -50%);
+	pointer-events: none;
 }
