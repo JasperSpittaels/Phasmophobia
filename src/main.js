@@ -1,89 +1,75 @@
-const startBtn = document.getElementById('start');
-const statusEl = document.getElementById('status');
+const startBtn = document.getElementById("startBtn");
+const statusText = document.getElementById("status");
 
-// Haunted zones met echte geluiden
-const zones = [
-  {
-    name: 'Spookhuis',
-    lat: 50.985,
-    lng: 4.56732,
-    radius: 40,
-    audio: new Audio('/audio/ghost1.mp3')
-  },
-  {
-    name: 'Begraafplaats',
-    lat: 50.986,
-    lng: 4.5677,
-    radius: 60,
-    audio: new Audio('/audio/ghost_growl.mp3')
-  }
-];
+let recognition;
 
-let watchId = null;
+startBtn.onclick = async () => {
+  startMic();
+  statusText.textContent = "Listening... Say something 👀";
+};
 
-startBtn.addEventListener('click', () => {
-  if (!navigator.geolocation) {
-    statusEl.textContent = 'Geolocatie wordt niet ondersteund in deze browser.';
+function startMic() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    alert("Speech recognition not supported!");
     return;
   }
 
-  statusEl.textContent = 'Locatie wordt gevolgd...';
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.lang = "nl";
 
-  // Audio voorbereiden (mobiel vereist user interaction)
-  zones.forEach(z => {
-    z.audio.load();
-  });
+  recognition.onresult = (event) => {
+    const result = event.results[event.results.length - 1];
 
-  watchId = navigator.geolocation.watchPosition(onPosition, onError, {
-    enableHighAccuracy: true,
-    maximumAge: 5000,
-    timeout: 10000
-  });
-});
+    if (!result.isFinal) return;
 
-function onPosition(pos) {
-  const { latitude, longitude } = pos.coords;
-  statusEl.textContent = `Locatie: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+    const text = result[0].transcript.trim().toLowerCase();
 
-  zones.forEach(zone => {
-    const d = distanceInMeters(latitude, longitude, zone.lat, zone.lng);
+    if (!text) return;
 
-    if (d <= zone.radius) {
-      if (zone.audio.paused) {
-        zone.audio.loop = true;
-        zone.audio.play().catch(() => {
-          console.warn('Kon audio niet afspelen (permissie?).');
-        });
-        console.log(`In zone: ${zone.name}`);
-      }
-    } else {
-      if (!zone.audio.paused) {
-        zone.audio.pause();
-        zone.audio.currentTime = 0;
-      }
-    }
-  });
+    console.log("Heard:", text);
+
+    sendToServer(text);
+  };
+
+  recognition.start();
 }
 
-function onError(err) {
-  statusEl.textContent = `Locatiefout: ${err.message}`;
+function checkGhostResponse(text) {
+  if (text.includes("are you here")) {
+    ghostEvent("Yes...");
+  } else if (text.includes("show yourself")) {
+    ghostEvent("Appeared!");
+  }
 }
 
-// Haversine-formule voor afstand in meters
-function distanceInMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const toRad = deg => (deg * Math.PI) / 180;
+async function sendToServer(text) {
+  try {
+    const res = await fetch("http://localhost:3000/ghost", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: text })
+    });
 
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
+    const data = await res.json();
 
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    ghostEvent(data.response);
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  } catch (err) {
+    console.error("Server error:", err);
+    statusText.textContent = "⚠️ Server offline";
+  }
+}
+
+function ghostEvent(message) {
+  statusText.textContent = message;
+
+  setTimeout(() => {
+    document.body.style.background = "black";
+    statusText.textContent = "Listening...";
+  }, 2000);
 }
