@@ -117,8 +117,8 @@ function animate() {
 
     if (move.forward) camera.position.add(dir.clone().multiplyScalar(currentSpeed));
     if (move.backward) camera.position.add(dir.clone().multiplyScalar(-currentSpeed));
-    if (move.left) camera.position.add(right.clone().multiplyScalar(currentSpeed));
-    if (move.right) camera.position.add(right.clone().multiplyScalar(-currentSpeed));
+    if (move.left) camera.position.add(right.clone().multiplyScalar(-currentSpeed));
+    if (move.right) camera.position.add(right.clone().multiplyScalar(currentSpeed));
 
     // Zwaartekracht
     velocityY += gravity;
