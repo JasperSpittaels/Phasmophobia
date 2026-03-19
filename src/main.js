@@ -5,13 +5,20 @@ import { PointerLockControls } from "three/examples/jsm/controls/PointerLockCont
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 
+const playerStart = {
+  x: 0,
+  y: 200,
+  z: 0
+};
+
 const camera = new THREE.PerspectiveCamera(
   75,
   window.innerWidth / window.innerHeight,
   0.1,
   1000
 );
-camera.position.set(0, 10, 0);
+
+camera.position.set(playerStart.x, playerStart.y, playerStart.z);
 
 const renderer = new THREE.WebGLRenderer({
   canvas: document.getElementById("gameCanvas")
@@ -27,8 +34,8 @@ const terrainMeshes = [];
 loader.load("/Phasmophobia/models/terrain.glb", (gltf) => {
   const model = gltf.scene;
 
-  model.scale.set(15, 15, 15);
-	model.position.set(0, -5, 0);
+  model.scale.set(75, 75, 75);
+  model.position.set(0, 0, 0);
 
   scene.add(model);
 
@@ -45,18 +52,23 @@ document.body.addEventListener("click", () => controls.lock());
 const move = { forward: 0, backward: 0, left: 0, right: 0 };
 let isSprinting = false;
 
-const walkSpeed = 0.01;
-const sprintSpeed = 0.02;
+const walkSpeed = 0.5;
+const sprintSpeed = 1;
 let currentSpeed = 0;
 
 let velocityY = 0;
-const gravity = -0.02;
-const maxFallSpeed = -0.15;
-const playerHeight = 0.5;
-const maxStep = 0.5;
+const gravity = -0.05;
+const maxFallSpeed = -10;
+const playerHeight = 1.6;
 
 const raycaster = new THREE.Raycaster();
 const down = new THREE.Vector3(0, -1, 0);
+
+function setPlayerPosition(x, y, z) {
+  camera.position.set(x, y, z);
+  velocityY = 0;
+}
+// =============================
 
 document.addEventListener("keydown", (e) => {
   if (e.code === "KeyW") move.forward = 1;
@@ -65,6 +77,11 @@ document.addEventListener("keydown", (e) => {
   if (e.code === "KeyD") move.right = 1;
 
   if (e.code === "ShiftLeft") isSprinting = true;
+
+  // BONUS: druk op R om te resetten
+  if (e.code === "KeyR") {
+    setPlayerPosition(playerStart.x, playerStart.y, playerStart.z);
+  }
 });
 
 document.addEventListener("keyup", (e) => {
@@ -96,7 +113,6 @@ function animate() {
     right.crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
 
     const targetSpeed = isSprinting ? sprintSpeed : walkSpeed;
-
     currentSpeed += (targetSpeed - currentSpeed) * 0.1;
 
     if (move.forward) camera.position.add(dir.clone().multiplyScalar(currentSpeed));
@@ -104,18 +120,18 @@ function animate() {
     if (move.left) camera.position.add(right.clone().multiplyScalar(currentSpeed));
     if (move.right) camera.position.add(right.clone().multiplyScalar(-currentSpeed));
 
+    // Zwaartekracht
     velocityY += gravity;
+    if (velocityY < maxFallSpeed) velocityY = maxFallSpeed;
 
-    if (velocityY < maxFallSpeed) {
-      velocityY = maxFallSpeed;
-    }
     camera.position.y += velocityY;
 
+    // Ground detectie
     raycaster.set(camera.position, down);
     const intersects = raycaster.intersectObjects(terrainMeshes, true);
 
     if (intersects.length > 0) {
-      const groundY = intersects[0].point.y + playerHeight;
+      const groundY = intersects[0].point.y + playerHeight + 30;
 
       if (camera.position.y <= groundY) {
         camera.position.y = THREE.MathUtils.lerp(
